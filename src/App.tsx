@@ -72,6 +72,11 @@ function App() {
 
     const upcasedTrimmedInstructions = instructionsValue.toUpperCase().replace(/\s/g, "");
 
+    if (!/^[LRF]+$/.test(upcasedTrimmedInstructions)) {
+      alert('Invalid input, provide a valid string of robot instructions: L, R or F.');
+      return;
+    }
+
     executeInstructions(upcasedTrimmedInstructions);
 
     instructionsRef.current?.value && (instructionsRef.current.value = "");
