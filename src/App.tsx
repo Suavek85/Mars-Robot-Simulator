@@ -1,31 +1,64 @@
 import { useState, useRef } from "react";
 import "./App.css";
 
+const LOST = "LOST";
+
 type DirectionType = "N" | "E" | "S" | "W";
+
+type StatusType = "" | typeof LOST;
+
+type EdgePositionsType = {
+  [key in DirectionType]: { x: number; y: number }[];
+};
 interface Robot {
   x: number;
   y: number;
   robotNumber: number;
   direction: DirectionType;
+  status: StatusType;
 }
 
-const initialRobot: Robot = { x: 0, y: 0, direction: "N", robotNumber: 1 };
+const initialRobot: Robot = {
+  x: 0,
+  y: 0,
+  direction: "N",
+  robotNumber: 1,
+  status: "",
+};
 
 function App() {
   const [robot, setRobot] = useState<Robot>(initialRobot);
   const instructionsRef = useRef<HTMLInputElement>(null);
+  const [edgePositions, setEdgePositions] = useState<EdgePositionsType>({
+    N: [],
+    E: [],
+    S: [],
+    W: [],
+  });
+
+  const isRobotOnEdgePosition = (
+    updatedDirection: DirectionType,
+    updatedY: number,
+    updatedX: number
+  ) => {
+    return edgePositions[updatedDirection].some(
+      (position) => position.y === updatedY && position.x === updatedX
+    );
+  };
 
   const executeInstructions = (instructions: string) => {
-    const { x, y, direction, robotNumber } = robot;
+    const { x, y, direction, robotNumber, status } = robot;
 
-    let updatedX = x;
-    let updatedY = y;
-    let updatedRobotNumber = robotNumber;
-    let updatedDirection = direction;
+    const isRobotLost = status === LOST;
+
+    let updatedX = isRobotLost ? initialRobot.x : x;
+    let updatedY = isRobotLost ? initialRobot.y : y;
+    let updatedRobotNumber = isRobotLost ? robotNumber + 1 : robotNumber;
+    let updatedDirection = isRobotLost ? initialRobot.direction : direction;
+    let updatedStatus = isRobotLost ? initialRobot.status : status;
 
     for (const instruction of instructions) {
       if (instruction === "L" || instruction === "R") {
-
         const directionMap: Record<
           DirectionType,
           Record<"L" | "R", DirectionType>
@@ -38,21 +71,61 @@ function App() {
 
         updatedDirection = directionMap[updatedDirection][instruction];
       } else if (instruction === "F") {
+        
+        if (isRobotOnEdgePosition(updatedDirection, updatedY, updatedX)) {
+          break;
+        }
+
         switch (updatedDirection) {
           case "N":
             updatedY++;
+            if (updatedY === 51) {
+              updatedStatus = LOST;
+              updatedY--;
+            }
             break;
           case "E":
             updatedX++;
+            if (updatedX === 51) {
+              updatedStatus = LOST;
+              updatedX--;
+            }
             break;
           case "S":
             updatedY--;
+            if (updatedY === -1) {
+              updatedStatus = LOST;
+              updatedY++;
+            }
             break;
           case "W":
             updatedX--;
+            if (updatedX === -1) {
+              updatedStatus = LOST;
+              updatedX++;
+            }
             break;
         }
       }
+    }
+
+    if (updatedStatus === LOST) {
+      setEdgePositions((prevEdgePositions) => {
+        const edgePositionExists = prevEdgePositions[updatedDirection].some(
+          (position) => position.x === updatedX && position.y === updatedY
+        );
+
+        if (!edgePositionExists) {
+          return {
+            ...prevEdgePositions,
+            [updatedDirection]: [
+              ...prevEdgePositions[updatedDirection],
+              { x: updatedX, y: updatedY },
+            ],
+          };
+        }
+        return prevEdgePositions;
+      });
     }
 
     setRobot({
@@ -60,6 +133,7 @@ function App() {
       y: updatedY,
       robotNumber: updatedRobotNumber,
       direction: updatedDirection,
+      status: updatedStatus,
     });
   };
 
@@ -70,10 +144,14 @@ function App() {
 
     if (!instructionsValue) return;
 
-    const upcasedTrimmedInstructions = instructionsValue.toUpperCase().replace(/\s/g, "");
+    const upcasedTrimmedInstructions = instructionsValue
+      .toUpperCase()
+      .replace(/\s/g, "");
 
     if (!/^[LRF]+$/.test(upcasedTrimmedInstructions)) {
-      alert('Invalid input, provide a valid string of robot instructions: L, R or F.');
+      alert(
+        "Invalid input, provide a valid string of robot instructions: L, R or F."
+      );
       return;
     }
 
@@ -95,7 +173,7 @@ function App() {
       </form>
       <p>ROBOT{robot.robotNumber} output:</p>
       <p>
-        {robot.x} {robot.y} {robot.direction}
+        {robot.x} {robot.y} {robot.direction} {robot.status}
       </p>
     </div>
   );
