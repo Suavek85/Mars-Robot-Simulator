@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import MarsGrid from './components/MarsGrid';
 import "./App.css";
 
 const LOST = "LOST";
@@ -35,6 +36,7 @@ function App() {
     S: [],
     W: [],
   });
+  const { x, y, direction, robotNumber, status } = robot;
 
   const isRobotOnEdgePosition = (
     updatedDirection: DirectionType,
@@ -47,8 +49,7 @@ function App() {
   };
 
   const executeInstructions = (instructions: string) => {
-    const { x, y, direction, robotNumber, status } = robot;
-
+    
     const isRobotLost = status === LOST;
 
     let updatedX = isRobotLost ? initialRobot.x : x;
@@ -71,7 +72,7 @@ function App() {
 
         updatedDirection = directionMap[updatedDirection][instruction];
       } else if (instruction === "F") {
-        
+
         if (isRobotOnEdgePosition(updatedDirection, updatedY, updatedX)) {
           break;
         }
@@ -172,9 +173,8 @@ function App() {
         <button type="submit">SUBMIT INSTRUCTIONS</button>
       </form>
       <p>ROBOT{robot.robotNumber} output:</p>
-      <p>
-        {robot.x} {robot.y} {robot.direction} {robot.status}
-      </p>
+      <p>{x} {y} {direction} {status}</p>
+      <MarsGrid positionX={x} positionY={y} />
     </div>
   );
 }
