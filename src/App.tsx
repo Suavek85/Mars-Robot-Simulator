@@ -46,8 +46,6 @@ function App() {
   });
   const { currentX, currentY, direction, robotNumber, status } = robot;
 
-  console.log(edgePositions);
-
   const isRobotOnEdgePosition = (
     updatedDirection: DirectionType,
     updatedY: number,
