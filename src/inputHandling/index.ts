@@ -1,0 +1,1 @@
+export { getInitialPositionInputs, getInstructionsInputs } from './inputHandling';

@@ -1,216 +1,167 @@
 import { useState, useRef } from "react";
-import MarsGrid from "./components/MarsGrid";
 import {
-  INVALID_INPUT_ALERT,
-  INPUT_PLACEHOLDER,
   HEADER_TEXT,
   SUBMIT_BUTTON,
   ROBOT_OUTPUT,
   LOST,
+  INVALID_INPUT_WARNING,
 } from "./constants";
+import { cleanAndValidateInput } from "./inputValidation";
+import {
+  getInitialPositionInputs,
+  getInstructionsInputs,
+} from "./inputHandling";
+import {
+  updateEdgePositions,
+  moveRobot,
+  turnRobot,
+  isRobotNotOnEdgePosition,
+} from "./robotLogic";
+import { generateUniqueId } from "./utils/generateUniqueId";
 import "./App.css";
 
 type DirectionType = "N" | "E" | "S" | "W";
 
-type TurnInstructionsType = "L" | "R";
-
-type StatusType = "" | typeof LOST;
+type EdgePositionType = {
+  x: number;
+  y: number;
+};
 
 type EdgePositionsType = {
-  [key in DirectionType]: { x: number; y: number }[];
+  [key in DirectionType]: EdgePositionType[];
 };
 interface Robot {
   currentX: number;
   currentY: number;
-  robotNumber: number;
   direction: DirectionType;
-  status: StatusType;
+  status: string;
+  id: string;
 }
 
-const initialRobot: Robot = {
-  currentX: 0,
-  currentY: 0,
-  direction: "N",
-  robotNumber: 1,
-  status: "",
-};
-
 function App() {
-  const [robot, setRobot] = useState<Robot>(initialRobot);
-  const instructionsRef = useRef<HTMLInputElement>(null);
-  const [edgePositions, setEdgePositions] = useState<EdgePositionsType>({
-    N: [],
-    E: [],
-    S: [],
-    W: [],
-  });
-  const { currentX, currentY, direction, robotNumber, status } = robot;
+  const [robots, setRobots] = useState<Robot[]>([]);
+  const [isInputValid, setInputValidity] = useState(true);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const worldSizeInputRef = useRef<string>();
 
-  const isRobotOnEdgePosition = (
-    updatedDirection: DirectionType,
-    updatedY: number,
-    updatedX: number
-  ) => {
-    return edgePositions[updatedDirection].some(
-      (position) => position.y === updatedY && position.x === updatedX
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setRobots([]);
+
+    const { areAllInputLinesValid, cleanedLines } = cleanAndValidateInput(
+      inputRef.current?.value || ""
     );
-  };
+    setInputValidity(areAllInputLinesValid);
 
-  const turnRobot = (
-    direction: DirectionType,
-    instruction: TurnInstructionsType
-  ): DirectionType => {
-    const directionMap: Record<
-      DirectionType,
-      Record<TurnInstructionsType, DirectionType>
-    > = {
-      N: { L: "W", R: "E" },
-      E: { L: "N", R: "S" },
-      S: { L: "E", R: "W" },
-      W: { L: "S", R: "N" },
-    };
-    return directionMap[direction][instruction];
-  };
+    if (areAllInputLinesValid) {
 
-  const moveRobot = (
-    direction: DirectionType,
-    x: number,
-    y: number,
-    status: StatusType
-  ): [number, number, StatusType] => {
-    let updatedX = x;
-    let updatedY = y;
-    let updatedStatus = status;
+      let updatedEdgePositions: EdgePositionsType = {
+        N: [],
+        E: [],
+        S: [],
+        W: [],
+      };
 
-    switch (direction) {
-      case "N":
-        updatedY++;
-        if (updatedY === 51) {
-          updatedStatus = LOST;
-          updatedY--;
-        }
-        break;
-      case "E":
-        updatedX++;
-        if (updatedX === 51) {
-          updatedStatus = LOST;
-          updatedX--;
-        }
-        break;
-      case "S":
-        updatedY--;
-        if (updatedY === -1) {
-          updatedStatus = LOST;
-          updatedY++;
-        }
-        break;
-      case "W":
-        updatedX--;
-        if (updatedX === -1) {
-          updatedStatus = LOST;
-          updatedX++;
-        }
-        break;
-    }
-    return [updatedX, updatedY, updatedStatus];
-  };
+      worldSizeInputRef.current = cleanedLines[0];
+      const initialPositionInputs = getInitialPositionInputs(cleanedLines);
+      const instructionsInputs = getInstructionsInputs(cleanedLines);
 
-  const updateEdgePositions = (
-    x: number,
-    y: number,
-    direction: DirectionType
-  ): void => {
-    setEdgePositions((prevEdgePositions: EdgePositionsType) => {
-      const edgePositionExists = prevEdgePositions[direction].some(
-        (position) => position.x === x && position.y === y
-      );
-
-      if (!edgePositionExists) {
-        return {
-          ...prevEdgePositions,
-          [direction]: [...prevEdgePositions[direction], { x, y }],
-        };
-      }
-      return prevEdgePositions;
-    });
-  };
-
-  const executeInstructions = (instructions: string) => {
-    const isRobotLost = status === LOST;
-    let updatedX = isRobotLost ? initialRobot.currentX : currentX;
-    let updatedY = isRobotLost ? initialRobot.currentY : currentY;
-    let updatedRobotNumber = isRobotLost ? robotNumber + 1 : robotNumber;
-    let updatedDirection = isRobotLost ? initialRobot.direction : direction;
-    let updatedStatus = isRobotLost ? initialRobot.status : status;
-
-    for (const instruction of instructions) {
-      if (instruction === "L" || instruction === "R") {
-        updatedDirection = turnRobot(updatedDirection, instruction);
-      } else if (instruction === "F") {
-        if (isRobotOnEdgePosition(updatedDirection, updatedY, updatedX)) {
-          break;
+      for (let i = 0; i < initialPositionInputs.length; i++) {
+        if (instructionsInputs[i] && initialPositionInputs[i]) {
+          executeInstructions(
+            initialPositionInputs[i],
+            instructionsInputs[i],
+            updatedEdgePositions,
+            // eslint-disable-next-line no-loop-func
+            (edgePositions) => {
+              updatedEdgePositions = edgePositions;
+            }
+          );
         } else {
+          break;
+        }
+      }
+    }
+  };
+
+  const executeInstructions = (
+    initialPosition: string,
+    instructions: string,
+    updatedEdgePositions: EdgePositionsType,
+    onEdgePositionsUpdated: (edgePositions: EdgePositionsType) => void
+  ) => {
+    const [initialX, initialY, initialDirection] = initialPosition.split(" ");
+    const [worldSizeX = "", worldSizeY = ""] =
+      worldSizeInputRef.current?.split(" ") || [];
+    let updatedX = Number(initialX);
+    let updatedY = Number(initialY);
+    let updatedDirection = initialDirection as DirectionType;
+    let updatedStatus = "";
+
+    if (Number(worldSizeX) > updatedX || Number(worldSizeY) > updatedY) {
+      for (const instruction of instructions) {
+        if (instruction === "L" || instruction === "R") {
+          updatedDirection = turnRobot(updatedDirection, instruction);
+        }
+        if (
+          instruction === "F" &&
+          isRobotNotOnEdgePosition(
+            updatedDirection,
+            updatedY,
+            updatedX,
+            updatedEdgePositions
+          )
+        ) {
           [updatedX, updatedY, updatedStatus] = moveRobot(
             updatedDirection,
             updatedX,
             updatedY,
-            updatedStatus
+            updatedStatus,
+            worldSizeX,
+            worldSizeY
           );
+          if (updatedStatus === LOST) {
+            updateEdgePositions(
+              updatedX,
+              updatedY,
+              updatedDirection,
+              updatedEdgePositions
+            );
+            onEdgePositionsUpdated(updatedEdgePositions);
+            break;
+          }
         }
       }
-    }
-
-    if (updatedStatus === LOST) {
-      updateEdgePositions(updatedX, updatedY, updatedDirection);
-    }
-
-    setRobot({
-      currentX: updatedX,
-      currentY: updatedY,
-      robotNumber: updatedRobotNumber,
-      direction: updatedDirection,
-      status: updatedStatus,
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const instructionsValue = instructionsRef.current?.value;
-
-    if (!instructionsValue) return;
-
-    const upcasedTrimmedInstructions = instructionsValue
-      .toUpperCase()
-      .replace(/\s/g, "");
-
-    if (!/^[LRF]+$/.test(upcasedTrimmedInstructions)) {
-      alert({ INVALID_INPUT_ALERT });
-      return;
     } else {
-      executeInstructions(upcasedTrimmedInstructions);
-      instructionsRef.current?.value && (instructionsRef.current.value = "");
+      updatedStatus = "Robot deployed outside of the world and LOST";
     }
+
+    setRobots((prevRobots) => {
+      const newRobot = {
+        id: generateUniqueId(),
+        currentX: updatedX,
+        currentY: updatedY,
+        direction: updatedDirection,
+        status: updatedStatus,
+      };
+      return [...prevRobots, newRobot];
+    });
   };
 
   return (
     <div className="app">
       <h1>{HEADER_TEXT}</h1>
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          ref={instructionsRef}
-          placeholder={INPUT_PLACEHOLDER}
-        />
+        <textarea cols={50} rows={10} ref={inputRef} />
+        {!isInputValid && <p>{INVALID_INPUT_WARNING}</p>}
         <button type="submit">{SUBMIT_BUTTON}</button>
       </form>
-      <p>
-        {robotNumber}-{ROBOT_OUTPUT}
-      </p>
-      <p>
-        {currentX} {currentY} {direction} {status}
-      </p>
-      <MarsGrid positionX={currentX} positionY={currentY} />
+      <p>{ROBOT_OUTPUT}</p>
+      {robots.map((robot) => (
+        <p key={robot.id}>
+          {robot.currentX} {robot.currentY} {robot.direction} {robot.status}
+        </p>
+      ))}
     </div>
   );
 }
