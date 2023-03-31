@@ -1,14 +1,16 @@
 type CleanedAndValidatedInputType = {
   areAllInputLinesValid: boolean;
   cleanedLines: string[];
-}
+};
 
 const validateWorldDimensionsInput = (worldDimensions: string) => {
   return /^(?:[1-9]|[1-4]\d|50) (?:[1-9]|[1-4]\d|50)$/.test(worldDimensions);
 };
 
 const validateInitialPositionInput = (initialPosition: string) => {
-  return /^([0-9]|[1-4][0-9]|50) ([0-9]|[1-4][0-9]|50) [EWSN]$/.test(initialPosition);
+  return /^([0-9]|[1-4][0-9]|50) ([0-9]|[1-4][0-9]|50) [EWSN]$/.test(
+    initialPosition
+  );
 };
 
 const validateInstructionsInput = (instructions: string) => {
@@ -29,18 +31,29 @@ const validateInputLine = (index: number, line: string) => {
   }
 };
 
-export const cleanAndValidateInput = (inputValue: string): CleanedAndValidatedInputType => {
+const cleanInput = (inputValue: string): string[] => {
   const lines = inputValue.split("\n");
-  
-  const cleanedLines = lines.map(line => {
-    const trimmedLine = line.trim();
-    return trimmedLine !== '' ? trimmedLine : null;
-  }).filter(Boolean) as string[];
 
-  const areAllInputLinesValid = cleanedLines.every((line, index) => validateInputLine(index, line));
+  const cleanedLines = lines
+    .map((line) => {
+      const trimmedLine = line.trim();
+      return trimmedLine !== "" ? trimmedLine : null;
+    })
+    .filter(Boolean) as string[];
+
+  return cleanedLines;
+};
+
+export const validateCleanedInput = (
+  inputValue: string
+): CleanedAndValidatedInputType => {
+  const cleanedLines = cleanInput(inputValue);
+  const areAllInputLinesValid = cleanedLines.every((line, index) =>
+    validateInputLine(index, line)
+  );
 
   return {
     areAllInputLinesValid,
-    cleanedLines: areAllInputLinesValid ? cleanedLines : []
+    cleanedLines: areAllInputLinesValid ? cleanedLines : [],
   };
-}
+};

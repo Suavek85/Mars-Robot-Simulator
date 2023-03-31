@@ -6,7 +6,7 @@ import {
   LOST,
   INVALID_INPUT_WARNING,
 } from "./constants";
-import { cleanAndValidateInput } from "./inputValidation";
+import { validateCleanedInput } from "./inputValidation";
 import {
   getInitialPositionInputs,
   getInstructionsInputs,
@@ -48,7 +48,7 @@ function App() {
     event.preventDefault();
     setRobots([]);
 
-    const { areAllInputLinesValid, cleanedLines } = cleanAndValidateInput(
+    const { areAllInputLinesValid, cleanedLines } = validateCleanedInput(
       inputRef.current?.value || ""
     );
     setInputValidity(areAllInputLinesValid);

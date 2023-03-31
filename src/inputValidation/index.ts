@@ -1,1 +1,1 @@
-export { cleanAndValidateInput } from './inputValidation';
+export { validateCleanedInput } from './inputValidation';
